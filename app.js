@@ -2,15 +2,33 @@
 (()=>{
 const ORIGINAL_API = 'https://xivpf.littlenightmare.top';
 const DC=['陆行鸟','莫古力','猫小胖','豆豆柴'];
+// Player-facing names follow common Mainland China FF14 usage. Other names are search aliases.
+// Keep each race/sex identity distinct: 猫娘 is Miqo'te, while 狮女 is Hrothgar.
 const RACES=[
- ['人族','人男','人女',['人男','人族男','男中原','男高地','人类男','中原男','高地男','hyur male'],['人女','人族女','中原女','高地女','hyur female']],
- ['精灵族','精男','精女',['精男','精灵男','精灵族男','elezen male'],['精女','精灵女','精灵族女','elezen female']],
- ['拉拉菲尔','肥男','肥女',['肥男','拉拉男','拉拉肥男','拉拉菲尔男','lalafell male'],['肥女','拉拉女','拉拉肥女','拉拉菲尔女','lalafell female']],
- ['猫魅族','猫男','猫女',['猫男','猫魅男','猫魅族男','miqote male','miqo’te male'],['猫女','猫魅女','猫魅族女','miqote female','miqo’te female']],
- ['鲁加族','鲁加男','鲁加女',['鲁加男','鲁男','鲁加族男','roegadyn male'],['鲁加女','鲁女','鲁加族女','roegadyn female']],
- ['敖龙族','龙男','龙女',['龙男','敖龙男','敖龙族男','aura male','au ra male'],['龙女','敖龙女','敖龙族女','aura female','au ra female']],
- ['维埃拉族','兔男','兔女',['兔男','维埃拉男','维埃拉族男','viera male'],['兔女','维埃拉女','维埃拉族女','viera female']],
- ['硌狮族','狮男','狮女',['狮男','硌狮男','硌狮族男','rothgar male','hrothgar male'],['狮女','硌狮女','硌狮族女','rothgar female','hrothgar female']],
+ ['人族','人男','人女',
+  ['人男','人族男','人类男','中原男','男中原','高地男','男高地','人男中原','人男高地','hyur male'],
+  ['人女','人族女','人类女','中原女','女中原','高地女','女高地','hyur female']],
+ ['精灵族','男精','女精',
+  ['男精','精男','精灵男','男精灵','精灵族男','腿精男','男腿精','elezen male'],
+  ['女精','精女','精灵女','女精灵','精灵族女','腿精女','女腿精','elezen female']],
+ ['拉拉菲尔族','公肥','母肥',
+  ['公肥','肥男','男肥','拉拉肥男','男拉拉肥','拉拉菲尔男','lalafell male'],
+  ['母肥','肥女','女肥','拉拉肥女','女拉拉肥','拉拉菲尔女','lalafell female']],
+ ['猫魅族','猫男','猫娘',
+  ['猫男','男猫','猫魅男','猫魅族男','猫魅族男性','miqote male','miqo’te male'],
+  ['猫娘','猫女','女猫','猫魅女','猫魅族女','猫魅族女性','miqote female','miqo’te female']],
+ ['鲁加族','鲁加男','鲁加女',
+  ['鲁加男','鲁男','男鲁加','鲁加族男','鲁加族男性','roegadyn male'],
+  ['鲁加女','鲁女','女鲁加','鲁加族女','鲁加族女性','roegadyn female']],
+ ['敖龙族','龙男','龙娘',
+  ['龙男','男龙','敖龙男','奥拉男','敖龙族男','aura male','au ra male'],
+  ['龙娘','龙女','女龙','敖龙女','奥拉女','敖龙族女','aura female','au ra female']],
+ ['维埃拉族','兔男','兔娘',
+  ['兔男','男兔','维埃拉男','维埃拉族男','viera male'],
+  ['兔娘','兔女','女兔','维埃拉女','维埃拉族女','viera female']],
+ ['硌狮族','大猫','狮女',
+  ['大猫','狮男','男狮','公大猫','大猫男','男大猫','硌狮男','硌狮族男','hrothgar male','rothgar male'],
+  ['狮女','女狮','狮娘','母大猫','女大猫','大猫女','硌狮女','硌狮族女','hrothgar female','rothgar female']],
 ];
 // Recognize common visually-slash Unicode symbols, not only ASCII '/' or full-width '／'.
 // / U+002F, ／ U+FF0F, ⁄ U+2044, ∕ U+2215, ⧸ U+29F8, ╱ U+2571, ⫽ U+2AFD.
@@ -34,36 +52,49 @@ function humanLeft(s){if(!Number.isFinite(s)||s<=0)return '未提供';const m=Ma
 function niceTime(v){const d=new Date(v);if(!Number.isFinite(d.getTime()))return '未知';return d.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});}
 function buildRaces(){const node=el('raceGrid');node.innerHTML=RACES.map((r)=>[1,2].map((i)=>`<button type="button" class="race-chip" data-race="${esc(r[i])}" aria-pressed="false"><span>${esc(r[i])}</span></button>`).join('')).join(''); node.addEventListener('click',e=>{const b=e.target.closest('[data-race]');if(!b)return;$.race=$.race===b.dataset.race?'':b.dataset.race;$.page=1;renderRaces();render();});renderRaces();}
 function renderRaces(){document.querySelectorAll('[data-race]').forEach(x=>{const selected=x.dataset.race===$.race;x.classList.toggle('is-selected',selected);x.setAttribute('aria-pressed',selected?'true':'false')});}
-function aliasesForRace(race){const r=RACES.find(r=>r[1]===race||r[2]===race);return r?(race===r[1]?r[3]:r[4]):[]}
-// Expand shared-gender shorthand such as 猫兔人男 → 猫男 / 兔男 / 人男.
-// Explicit groups like 猫男兔女 are matched separately; do not infer gender where none is written.
-const RACE_CHAR={人:'人',精:'精',肥:'肥',猫:'猫',鲁:'鲁加',龙:'龙',兔:'兔',狮:'狮'};
+// Prefer longer, sex-explicit names before short names. Otherwise 女大猫 / 大猫女
+// can accidentally be counted as both Hrothgar and Miqo'te.
+const MODEL_ALIASES=RACES.flatMap(r=>[
+ ...r[3].map(alias=>({alias:normalize(alias),race:r[1]})),
+ ...r[4].map(alias=>({alias:normalize(alias),race:r[2]})),
+]).filter(e=>e.alias).sort((a,b)=>b.alias.length-a.alias.length);
 function modelHits(s){
- const n=normalize(s);const found=new Set();
- for(const race of RACES){
-  for(let i=1;i<=2;i++){
-   if(race[i===1?3:4].some(alias=>n.includes(normalize(alias))))found.add(race[i]);
+ const n=normalize(s), found=new Set(),occupied=new Uint8Array(n.length);
+ for(const entry of MODEL_ALIASES){
+  let from=0,at;
+  while((at=n.indexOf(entry.alias,from))!==-1){
+   const stop=at+entry.alias.length;
+   if(!occupied.slice(at,stop).some(Boolean)){
+    found.add(entry.race);
+    occupied.fill(1,at,stop);
+   }
+   from=at+1;
   }
  }
- // Exact abbreviated combined lists, including punctuation between race characters.
- // Only expand when >=2 race tokens share an explicit trailing gender marker.
- const sep='[\\/／、,，+＋&和或\\s]*';
- const combo=new RegExp(`((?:[人精肥猫鲁龙兔狮]${sep}){2,8})(男女|男|女)(?![A-Za-z])`,'g');
+ // A shared trailing gender: 猫兔人男 / 猫、兔、人男 / 猫兔女 / 龙猫兔男女.
+ // Gender is never guessed for an unqualified short race name.
+ const shorthand={
+  人:['人男','人女'],精:['男精','女精'],肥:['公肥','母肥'],
+  猫:['猫男','猫娘'],鲁:['鲁加男','鲁加女'],龙:['龙男','龙娘'],
+  兔:['兔男','兔娘'],狮:['大猫','狮女'],
+ };
+ const sep='[/／、,，+＋&和或]*';
+ const combo=new RegExp(`((?:[人精肥猫鲁龙兔狮]${sep}){2,8})(男女|男|女)(?![a-z])`,'g');
  for(const m of n.matchAll(combo)){
-  const chars=[...m[1]].filter(c=>RACE_CHAR[c]);
+  const chars=[...m[1]].filter(ch=>shorthand[ch]);
   if(chars.length<2)continue;
-  const genders=m[2]==='男女'?['男','女']:[m[2]];
-  for(const ch of chars)for(const sex of genders)found.add(RACE_CHAR[ch]+sex);
+  const which=m[2]==='男女'?[0,1]:[m[2]==='男'?0:1];
+  for(const ch of chars)for(const sex of which)found.add(shorthand[ch][sex]);
  }
+ // A natural shorthand specifically for Lalafell: 公母肥 / 母公肥.
+ if(/(?:公母|母公)肥/.test(n))for(const name of ['公肥','母肥'])found.add(name);
  return found;
 }
 function raceKeyword(text){
  const q=normalize(text);
  if(!q)return '';
- for(const r of RACES)for(let i=1;i<=2;i++){
-  if([r[i],...r[i===1?3:4]].some(alias=>normalize(alias)===q))return r[i];
- }
- return '';
+ const matches=new Set(MODEL_ALIASES.filter(x=>x.alias===q).map(x=>x.race));
+ return matches.size===1?[...matches][0]:'';
 }
 function priceOf(s){
  const m=priceMatches(s).next().value;
@@ -79,14 +110,14 @@ function markedText(s){
  }
  return result+esc(text.slice(last));
 }
-function mapListing(row){if(!row||typeof row!=='object'||row.id==null)return null;const dc=String(row.datacenter||'').replace('陸行鳥','陆行鸟').replace('貓小胖','猫小胖');if(!DC.includes(dc))return null;const desc=String(row.description||'').slice(0,2500);return {id:String(row.id),dc,world:String(row.created_world||row.world||''),name:String(row.name||'匿名'),desc,category:String(row.category||''),updated:String(row.updated_at||''),left:Number(row.time_left)||0,slots:Number(row.slots_available)||0};}
+function mapListing(row){if(!row||typeof row!=='object'||row.id==null)return null;const dc=String(row.datacenter||'').replace('陸行鳥','陆行鸟').replace('貓小胖','猫小胖');if(!DC.includes(dc))return null;const desc=String(row.description||'').slice(0,2500);return {id:String(row.id),dc,world:String(row.created_world||row.world||''),name:String(row.name||'匿名'),desc,models:modelHits(desc),category:String(row.category||''),updated:String(row.updated_at||''),left:Number(row.time_left)||0,slots:Number(row.slots_available)||0};}
 function flattenGroups(obj){if(!obj||typeof obj!=='object')throw Error('接口数据格式不正确');const list=Array.isArray(obj.data)?obj.data:obj.listings;if(!Array.isArray(list))throw Error('接口没有返回招募列表');const pg=obj.pagination;if(!pg||!Number.isInteger(Number(pg.total_pages)))throw Error('分页数据格式不正确');return {list,total:Math.min(80,Math.max(0,Number(pg.total_pages)))};}
 function mergeRows(rows){const map=new Map();for(const x of rows){const d=mapListing(x);if(!d)continue;const old=map.get(d.id);if(!old||String(d.updated)>String(old.updated))map.set(d.id,d);}return [...map.values()];}
 function getFiltered(){const kw=normalize($.keyword),kwRace=raceKeyword(kw);const ds=$.duration;const arr=$.items.filter(row=>{
  const str=row.desc;const n=normalize(str);const parsed=priceOf(str);
  if($.dc&&row.dc!==$.dc)return false;
- if($.race&&!modelHits(str).has($.race))return false;
- if(kw&&(kwRace?!modelHits(row.desc).has(kwRace):!normalize(row.desc+' '+row.name+' '+row.world).includes(kw)))return false;
+ if($.race&&!row.models.has($.race))return false;
+ if(kw&&(kwRace?!row.models.has(kwRace):!normalize(row.desc+' '+row.name+' '+row.world).includes(kw)))return false;
  if(!parsed)return false;
  if(ds&&(!parsed||parsed.duration!==ds))return false;
  return true;
