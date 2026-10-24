@@ -3,28 +3,27 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light dark"><meta name="theme-color" content="#f9f9f8">
-<meta name="description" content="FF14 国服建模招募检索 · 跨区筛选建模相关队伍招募">
+<meta name="description" content="FF14 建模招募检索">
 <title>FF14 建模招募检索</title>
-<link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="styles.css?v=3">
-<script defer src="app.js?v=3"></script>
+<link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="styles.css?v=6">
+<script defer src="app.js?v=6"></script>
 </head>
 <body>
 <main class="shell">
   <header class="top">
-    <div class="brand"><div class="brandmark" aria-hidden="true">XIV<span>.</span></div><div><h1>建模招募检索</h1><p>FF14 国服 · Party Finder</p></div></div>
+    <div class="brand"><div class="brandmark" aria-hidden="true">XIV<span>.</span></div><div><h1>建模招募检索</h1><p>FF14</p></div></div>
     <div class="topright"><span id="sourceState" class="source-badge">尚未连接</span><button id="themeBtn" class="icon-btn" aria-label="切换深色模式" title="切换外观">◐</button></div>
   </header>
   <section class="search-panel" aria-label="招募筛选">
-    <div class="intent-row"><p class="filter-summary">跨区查看建模相关招募，不区分求租或出租</p><button id="refreshBtn" class="refresh-btn"><span aria-hidden="true">↻</span> 刷新招募</button></div>
+    <div class="intent-row"><p class="filter-summary">未区分求租或出租</p><button id="refreshBtn" class="refresh-btn"><span aria-hidden="true">↻</span> 刷新招募</button></div>
     <div class="field-row">
-      <label class="field long"><span>内容搜索</span><input id="searchInput" autocomplete="off" spellcheck="false" placeholder="关键词，如：可审、挂机、陪伴、求兔男"></label>
+      <label class="field long"><span>内容搜索</span><input id="searchInput" autocomplete="off" spellcheck="false" placeholder="关键词，如：不卡、微审、审"></label>
       <label class="field"><span>大区</span><select id="dcSelect"><option value="">全区</option><option value="陆行鸟">陆行鸟</option><option value="莫古力">莫古力</option><option value="猫小胖">猫小胖</option><option value="豆豆柴">豆豆柴</option></select></label>
-      <label class="field"><span>价格 / 时长</span><select id="durationSelect"><option value="">不限</option><option value="10">/10</option><option value="20">/20</option><option value="30">/30</option><option value="40">/40</option><option value="50">/50</option><option value="60">/60</option></select></label>
+      <label class="field"><span>/时长</span><select id="durationSelect"><option value="">不限</option><option value="10">/10</option><option value="20">/20</option><option value="30">/30</option><option value="40">/40</option><option value="50">/50</option><option value="60">/60</option></select></label>
       <label class="field"><span>排序</span><select id="sortSelect"><option value="recent">最近更新</option><option value="time">剩余时间</option><option value="dc">按大区</option></select></label>
     </div>
-    <div class="race-top"><div class="race-label">建模选择 <span id="raceHint">可选种族与性别，支持「猫兔人男」等合并写法</span></div><button id="raceClear" class="text-btn">不限建模</button></div>
+    <div class="race-top"><div class="race-label">建模选择 <span id="raceHint">可选种族与性别，支持「猫兔人男」等合并写法</span></div><div class="race-actions"><button id="raceClear" class="text-btn">不限建模</button><button id="resetBtn" class="text-btn reset">重置筛选</button></div></div>
     <div class="race-grid" id="raceGrid" role="group" aria-label="种族和性别"></div>
-    <div class="advanced"><label class="check"><input id="patternToggle" type="checkbox" checked><span title="支持 50/30、50-30 等格式">数字格式筛选</span></label><label class="check"><input id="modelToggle" type="checkbox" checked><span>过滤无关招募</span></label><button id="resetBtn" class="text-btn reset">重置筛选</button></div>
   </section>
   <section class="results" aria-label="招募查询结果">
     <div class="section-head"><div><h2>招募结果 <span id="resultCount">—</span></h2><p id="resultHint">尚未读取招募</p></div><span id="updated" class="updated">—</span></div>

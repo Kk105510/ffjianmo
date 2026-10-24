@@ -12,13 +12,21 @@ const RACES=[
  ['维埃拉族','兔男','兔女',['兔男','维埃拉男','维埃拉族男','viera male'],['兔女','维埃拉女','维埃拉族女','viera female']],
  ['硌狮族','狮男','狮女',['狮男','硌狮男','硌狮族男','rothgar male','hrothgar male'],['狮女','硌狮女','硌狮族女','rothgar female','hrothgar female']],
 ];
-const ALL_ALIASES=new Set(RACES.flatMap(x=>[...x[3],...x[4]]));
-const RELEVANT=/(?:建模|卖身|卖模|出租|可审|审模|吸模|吸建模|陪伴|接单|求模|找模|点模|点人|租模|可点|挂机)/i;
-const PRICE_PATTERN=/(^|[^\d])([1-9]\d{0,5}(?:\.\d+)?)\s*([\/／\-－–—])\s*(10|20|30|40|50|60)(?!\d)/g;
+// Recognize common visually-slash Unicode symbols, not only ASCII '/' or full-width '／'.
+// / U+002F, ／ U+FF0F, ⁄ U+2044, ∕ U+2215, ⧸ U+29F8, ╱ U+2571, ⫽ U+2AFD.
+// Hyphens, dashes and backslashes are deliberately excluded (e.g. RP shop 17-60).
+// Also allow full-width numerals in either part, preserving original text for highlights.
+const PRICE_PATTERN=/(^|[^\d０-９])([1-9１-９][\d０-９]{0,5}(?:[.．][\d０-９]+)?)\s*([/／⁄∕⧸╱⫽])\s*([0-9０-９]{1,2})(?![\d０-９])/g;
+const asciiDigits = s => String(s).replace(/[０-９]/g, c=>String.fromCharCode(c.charCodeAt(0)-65248));
+const isAllowedDuration = s => ['10','20','30','40','50','60'].includes(asciiDigits(s));
+function* priceMatches(text){
+ PRICE_PATTERN.lastIndex=0;
+ for (const m of String(text||'').matchAll(PRICE_PATTERN)) if(isAllowedDuration(m[4]))yield m;
+}
 const el=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const normalize=s=>String(s??'').toLowerCase().replace(/[\s\u3000]/g,'');
-const $={race:'',dc:'',duration:'',sort:'recent',keyword:'',pattern:true,related:true,items:[],hasData:false,partial:false,progress:'',fetchedAt:null,loading:false,page:1,abort:null,error:'',activeReq:0,api:read('pf-api-base',ORIGINAL_API)};
+const $={race:'',dc:'',duration:'',sort:'recent',keyword:'',items:[],hasData:false,partial:false,progress:'',fetchedAt:null,loading:false,page:1,abort:null,error:'',activeReq:0,api:read('pf-api-base',ORIGINAL_API)};
 const PAGE_SIZE=30;
 function read(key,def){try{return localStorage.getItem(key)||def}catch{return def}}
 function store(key,value){try{localStorage.setItem(key,value)}catch{}}
@@ -49,7 +57,6 @@ function modelHits(s){
  }
  return found;
 }
-function matchedModel(s){return modelHits(s).size>0;}
 function raceKeyword(text){
  const q=normalize(text);
  if(!q)return '';
@@ -59,14 +66,12 @@ function raceKeyword(text){
  return '';
 }
 function priceOf(s){
- PRICE_PATTERN.lastIndex=0;
- const m=PRICE_PATTERN.exec(String(s||''));
- return m?{price:m[2],duration:m[4],raw:m[0].slice(m[1].length)}:null;
+ const m=priceMatches(s).next().value;
+ return m?{price:asciiDigits(m[2]),duration:asciiDigits(m[4]),raw:m[0].slice(m[1].length)}:null;
 }
 function markedText(s){
  const text=String(s||'');let result='',last=0;
- PRICE_PATTERN.lastIndex=0;
- for(const m of text.matchAll(PRICE_PATTERN)){
+ for(const m of priceMatches(text)){
   const start=m.index+m[1].length, end=m.index+m[0].length;
   result+=esc(text.slice(last,start));
   result+=`<mark class="price-inline">${esc(text.slice(start,end))}</mark>`;
@@ -82,9 +87,8 @@ function getFiltered(){const kw=normalize($.keyword),kwRace=raceKeyword(kw);cons
  if($.dc&&row.dc!==$.dc)return false;
  if($.race&&!modelHits(str).has($.race))return false;
  if(kw&&(kwRace?!modelHits(row.desc).has(kwRace):!normalize(row.desc+' '+row.name+' '+row.world).includes(kw)))return false;
- if($.pattern&&!parsed)return false;
+ if(!parsed)return false;
  if(ds&&(!parsed||parsed.duration!==ds))return false;
- if($.related&&!RELEVANT.test(str)&&!matchedModel(str))return false;
  return true;
  });
  arr.sort((a,b)=>$.sort==='time'?b.left-a.left:$.sort==='dc'?DC.indexOf(a.dc)-DC.indexOf(b.dc):String(b.updated).localeCompare(String(a.updated)));
@@ -96,7 +100,7 @@ function render(){
  el('sourceState').textContent=$.loading?'正在更新':$.error?'连接异常':$.hasData?($.partial?'部分数据':'已连接'):'尚未连接';
  el('refreshBtn').disabled=$.loading;
  const list=el('list');const pager=el('pager');if(!$.hasData){list.innerHTML=`<div class="empty-state"><h3>${$.error?'暂时无法读取招募':'正在等待招募数据'}</h3><p>${$.error?'检查数据源状态，或在设置中填入可用的自建代理地址。':'开始加载后，你可以选择人男、猫男等建模，并根据招募原文筛选。'}</p></div>`;pager.hidden=true;return;}
- if(!items.length){list.innerHTML=`<div class="empty-state"><h3>没有符合条件的招募</h3><p>可以关闭数字格式筛选，或选择其他种族、关键词重试；第三方数据可能有延迟或遗漏。</p></div>`;pager.hidden=true;return;}
+ if(!items.length){list.innerHTML=`<div class="empty-state"><h3>没有符合条件的招募</h3><p>仅显示带 /10～/60 的招募（不包含 17-60 一类写法）；可以切换大区、建模或关键词重试。第三方数据可能存在延迟。</p></div>`;pager.hidden=true;return;}
  const totalPages=Math.max(1,Math.ceil(items.length/PAGE_SIZE));$.page=Math.max(1,Math.min($.page,totalPages));const visible=items.slice(($.page-1)*PAGE_SIZE,$.page*PAGE_SIZE);
  list.innerHTML=visible.map(x=>{
   const age=x.updated?niceTime(x.updated):'未知时间';
@@ -122,8 +126,8 @@ async function update(){if($.abort)$.abort.abort();const req=++$.activeReq;$.abo
 }
 function bind(){
  const bindings=[['searchInput','keyword'],['dcSelect','dc'],['durationSelect','duration'],['sortSelect','sort']];for(const [id,key] of bindings){el(id).addEventListener(id==='searchInput'?'input':'change',e=>{$[key]=e.target.value;$.page=1;render()})}
- el('patternToggle').addEventListener('change',e=>{$.pattern=e.target.checked;$.page=1;render()});el('modelToggle').addEventListener('change',e=>{$.related=e.target.checked;$.page=1;render()});el('refreshBtn').addEventListener('click',update);
- el('raceClear').addEventListener('click',()=>{$.race='';renderRaces();$.page=1;render()});el('resetBtn').addEventListener('click',()=>{$.race='';$.dc='';$.duration='';$.sort='recent';$.keyword='';$.pattern=true;$.related=true;$.page=1;el('searchInput').value='';el('dcSelect').value='';el('durationSelect').value='';el('sortSelect').value='recent';el('patternToggle').checked=true;el('modelToggle').checked=true;renderRaces();render()});
+ el('refreshBtn').addEventListener('click',update);
+ el('raceClear').addEventListener('click',()=>{$.race='';renderRaces();$.page=1;render()});el('resetBtn').addEventListener('click',()=>{$.race='';$.dc='';$.duration='';$.sort='recent';$.keyword='';$.page=1;el('searchInput').value='';el('dcSelect').value='';el('durationSelect').value='';el('sortSelect').value='recent';renderRaces();render()});
  el('prevBtn').addEventListener('click',()=>{$.page--;render()});el('nextBtn').addEventListener('click',()=>{$.page++;render()});
  el('list').addEventListener('click',async e=>{const id=e.target.closest('[data-copy]')?.dataset.copy;const item=$.items.find(x=>x.id===id);if(!item)return;const str=`${item.desc}\n${item.name}@${item.world||item.dc}`;try{await navigator.clipboard.writeText(str);const b=e.target.closest('[data-copy]');const old=b.textContent;b.textContent='已复制';setTimeout(()=>b.textContent=old,1200)}catch{window.prompt('复制招募内容',str)}});
  el('themeBtn').addEventListener('click',()=>{const dark=document.documentElement.dataset.theme==='dark';document.documentElement.dataset.theme=dark?'light':'dark';store('pf-theme',dark?'light':'dark')});

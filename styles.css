@@ -16,3 +16,8 @@
 @media(max-width:365px){.advanced{gap:10px}.advanced .check{font-size:10px}.advanced .reset{white-space:nowrap}}
 
 @media(max-width:365px){.advanced{gap:10px}.advanced .check{font-size:10px}.advanced .reset{white-space:nowrap}}
+
+/* Actions stay beside the model selector; automatic slash filtering has no switch. */
+.race-actions{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.race-top{gap:12px}
+@media(max-width:365px){.race-actions{gap:5px}.race-actions .text-btn{font-size:9px;padding:2px}}
