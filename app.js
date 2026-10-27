@@ -2,6 +2,14 @@
 (()=>{
 const ORIGINAL_API = 'https://xivpf.littlenightmare.top';
 const DC=['陆行鸟','莫古力','猫小胖','豆豆柴'];
+// World IDs: public CN world registry snapshot. Missing IDs are ignored, never assigned to a guessed DC.
+const CN_WORLDS=new Map([
+ ['陆行鸟',[[1167,'红玉海'],[1081,'神意之地'],[1042,'拉诺西亚'],[1044,'幻影群岛'],[1060,'萌芽池'],[1173,'宇宙和音'],[1174,'沃仙曦染'],[1175,'晨曦王座']]],
+ ['莫古力',[[1172,'白银乡'],[1076,'白金幻象'],[1171,'神拳痕'],[1170,'潮风亭'],[1113,'旅人栈桥'],[1121,'拂晓之间'],[1166,'龙巢神殿'],[1176,'梦羽宝境']]],
+ ['猫小胖',[[1043,'紫水栈桥'],[1169,'延夏'],[1106,'静语庄园'],[1045,'摩杜纳'],[1177,'海猫茶屋'],[1178,'柔风海湾'],[1179,'琥珀原']]],
+ ['豆豆柴',[[1192,'水晶塔'],[1183,'银泪湖'],[1180,'太阳海岸'],[1186,'伊修加德'],[1201,'红茶川']]],
+].flatMap(([dc, worlds])=>worlds.map(([id,world])=>[id,{dc,world}])));
+
 // Player-facing names follow common Mainland China FF14 usage. Other names are search aliases.
 // Keep each race/sex identity distinct: 猫娘 is Miqo'te, while 狮女 is Hrothgar.
 const RACES=[
@@ -44,7 +52,7 @@ function* priceMatches(text){
 const el=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const normalize=s=>String(s??'').toLowerCase().replace(/[\s\u3000]/g,'');
-const $={race:'',dc:'',duration:'',sort:'recent',keyword:'',items:[],hasData:false,partial:false,progress:'',fetchedAt:null,loading:false,page:1,abort:null,error:'',activeReq:0,api:read('pf-api-base',ORIGINAL_API)};
+const $={race:'',dc:'',duration:'',sort:'recent',keyword:'',items:[],hasData:false,partial:false,progress:'',fetchedAt:null,loading:false,page:1,abort:null,error:'',apiVersion:'',activeReq:0,api:read('pf-api-base',ORIGINAL_API)};
 const PAGE_SIZE=30;
 function read(key,def){try{return localStorage.getItem(key)||def}catch{return def}}
 function store(key,value){try{localStorage.setItem(key,value)}catch{}}
@@ -110,7 +118,15 @@ function markedText(s){
  }
  return result+esc(text.slice(last));
 }
-function mapListing(row){if(!row||typeof row!=='object'||row.id==null)return null;const dc=String(row.datacenter||'').replace('陸行鳥','陆行鸟').replace('貓小胖','猫小胖');if(!DC.includes(dc))return null;const desc=String(row.description||'').slice(0,2500);return {id:String(row.id),dc,world:String(row.created_world||row.world||''),name:String(row.name||'匿名'),desc,models:modelHits(desc),category:String(row.category||''),updated:String(row.updated_at||''),left:Number(row.time_left)||0,slots:Number(row.slots_available)||0};}
+function mapListing(row){
+ if(!row||typeof row!=='object'||row.id==null)return null;
+ // v2 has ID-only world references; v1 has Chinese names.
+ const w=CN_WORLDS.get(Number(row.created_world_id));
+ const dc=String(row.datacenter||w?.dc||'').replace('陸行鳥','陆行鸟').replace('貓小胖','猫小胖');
+ if(!DC.includes(dc))return null;
+ const desc=String(row.description||'').slice(0,2500);
+ return {id:String(row.id),dc,world:String(row.created_world||row.world||w?.world||''),name:String(row.player_name||row.name||'匿名'),desc,models:modelHits(desc),category:String(row.category||''),updated:String(row.updated_at||''),left:Number(row.time_left_seconds??row.time_left)||0,slots:Number(row.slots_available)||0};
+}
 function flattenGroups(obj){if(!obj||typeof obj!=='object')throw Error('接口数据格式不正确');const list=Array.isArray(obj.data)?obj.data:obj.listings;if(!Array.isArray(list))throw Error('接口没有返回招募列表');const pg=obj.pagination;if(!pg||!Number.isInteger(Number(pg.total_pages)))throw Error('分页数据格式不正确');return {list,total:Math.min(80,Math.max(0,Number(pg.total_pages)))};}
 function mergeRows(rows){const map=new Map();for(const x of rows){const d=mapListing(x);if(!d)continue;const old=map.get(d.id);if(!old||String(d.updated)>String(old.updated))map.set(d.id,d);}return [...map.values()];}
 function getFiltered(){const kw=normalize($.keyword),kwRace=raceKeyword(kw);const ds=$.duration;const arr=$.items.filter(row=>{
@@ -128,7 +144,7 @@ function render(){
  const items=getFiltered();el('resultCount').textContent=$.hasData?String(items.length):'—';el('resultHint').textContent=$.hasData?`已读取 ${$.items.length} 条国服招募 · ${$.partial?'仅部分页面，结果可能不完整':'筛选完成'}`:'等待数据源返回';el('updated').textContent=$.fetchedAt?`读取于 ${niceTime($.fetchedAt)}`:'—';
  const notice=el('notice');notice.hidden=!($.loading||$.error||$.partial);
  if($.loading)notice.textContent=$.progress||'正在获取招募…';else if($.error)notice.textContent=$.error;else if($.partial)notice.textContent='部分招募页请求失败或超过读取上限，当前展示的是已成功获取的部分记录。';
- el('sourceState').textContent=$.loading?'正在更新':$.error?'连接异常':$.hasData?($.partial?'部分数据':'已连接'):'尚未连接';
+ el('sourceState').textContent=$.loading?'正在更新':$.error?'连接异常':$.hasData?($.partial?'部分数据':`已连接 · ${$.apiVersion}`):'尚未连接';
  el('refreshBtn').disabled=$.loading;
  const list=el('list');const pager=el('pager');if(!$.hasData){list.innerHTML=`<div class="empty-state"><h3>${$.error?'暂时无法读取招募':'正在等待招募数据'}</h3><p>${$.error?'检查数据源状态，或在设置中填入可用的自建代理地址。':'开始加载后，你可以选择人男、猫男等建模，并根据招募原文筛选。'}</p></div>`;pager.hidden=true;return;}
  if(!items.length){list.innerHTML=`<div class="empty-state"><h3>没有符合条件的招募</h3><p>仅显示带 /10～/60 的招募（不包含 17-60 一类写法）；可以切换大区、建模或关键词重试。第三方数据可能存在延迟。</p></div>`;pager.hidden=true;return;}
@@ -141,18 +157,46 @@ function render(){
  pager.hidden=items.length<=PAGE_SIZE;el('pageInfo').textContent=`${$.page} / ${totalPages}`;el('prevBtn').disabled=$.page===1;el('nextBtn').disabled=$.page===totalPages;
 }
 const timeoutFetch=async(url, signal, ms=18000)=>{const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort('timeout'),ms);const stop=()=>ctrl.abort('cancelled');signal?.addEventListener('abort',stop,{once:true});try{const r=await fetch(url,{signal:ctrl.signal,headers:{Accept:'application/json'}});if(!r.ok)throw Error(`接口状态 ${r.status}`);return await r.json()}finally{clearTimeout(timer);signal?.removeEventListener('abort',stop)}};
-function sourceUrl(page){const url=new URL($.api.replace(/\/$/,'')+'/api/listings');url.searchParams.set('page',page);url.searchParams.set('per_page','100');return url.toString()}
-async function update(){if($.abort)$.abort.abort();const req=++$.activeReq;$.abort=new AbortController();const signal=$.abort.signal;$.loading=true;$.error='';$.progress='正在连接招募数据源…';render();
- let combined=[],hasFailure=false;try{
-  const first=flattenGroups(await timeoutFetch(sourceUrl(1),signal));combined.push(...first.list);let maxPages=first.total;
-  if(maxPages>=80)hasFailure=true;
-  let nextPage=2,done=1;const total=Math.max(1,maxPages);$.progress=`正在读取招募 · ${done}/${total} 页`;render();
-  const workers=Array.from({length:Math.min(4,Math.max(0,maxPages-1))},async()=>{
-   while(nextPage<=maxPages&&!signal.aborted){const p=nextPage++;try{const page=flattenGroups(await timeoutFetch(sourceUrl(p),signal));combined.push(...page.list)}catch(err){if(signal.aborted)throw err;hasFailure=true}done++;if(req!==$.activeReq)return;$.progress=`正在读取招募 · ${done}/${total} 页`;if(done===total||done%3===0)render();}
-  });await Promise.all(workers);
+function sourceUrl(page,version){
+ // Input is an origin/base URL, not a full listing endpoint. Also recover common accidental pastes.
+ const base=$.api.replace(/\/(?:api\/(?:v2\/)?listings|api\/v2|api)\/?$/,'').replace(/\/$/,'');
+ const url=new URL(base+(version==='v2'?'/api/v2/listings':'/api/listings'));
+ url.searchParams.set('page',page);url.searchParams.set('per_page','100');return url.toString();
+}
+async function fetchAllPages(version,signal,req){
+ const first=flattenGroups(await timeoutFetch(sourceUrl(1,version),signal,12500));
+ let combined=[...first.list],hasFailure=first.total>=80;
+ let nextPage=2,done=1;const total=Math.max(1,first.total);
+ $.progress=`正在读取招募 · ${done}/${total} 页`;render();
+ const workers=Array.from({length:Math.min(4,Math.max(0,total-1))},async()=>{
+  while(nextPage<=total&&!signal.aborted){
+   const p=nextPage++;
+   try{const data=flattenGroups(await timeoutFetch(sourceUrl(p,version),signal,12500));combined.push(...data.list)}
+   catch(err){if(signal.aborted)throw err;hasFailure=true}
+   done++;if(req!==$.activeReq)return;
+   $.progress=`正在读取招募 · ${done}/${total} 页`;
+   if(done===total||done%3===0)render();
+  }
+ });await Promise.all(workers);
+ return {combined,hasFailure};
+}
+async function update(){
+ if($.abort)$.abort.abort();const req=++$.activeReq;
+ $.abort=new AbortController();const signal=$.abort.signal;
+ $.loading=true;$.error='';$.apiVersion='';$.progress='正在连接招募数据源…';render();
+ try{
+  let payload;let version='v2';let firstError;
+  try{payload=await fetchAllPages('v2',signal,req)}
+  catch(error){firstError=error;if(signal.aborted||req!==$.activeReq)return;
+    $.progress='新版接口不可用，尝试兼容接口…';render();
+    version='v1';try{payload=await fetchAllPages('v1',signal,req)}
+    catch(secondError){throw Error(`v2：${firstError.message||'失败'}；v1：${secondError.message||'失败'}`)}
+  }
   if(req!==$.activeReq)return;
-  $.items=mergeRows(combined);$.hasData=true;$.partial=hasFailure;$.fetchedAt=Date.now();$.page=1;
- }catch(err){if(req!==$.activeReq||signal.aborted)return;$.error=`招募接口无法访问：${err?.message||'连接失败'}。可能是网络、接口维护或浏览器跨域限制。请勿将其视为“没有招募”。`;
+  $.items=mergeRows(payload.combined);$.hasData=true;$.partial=payload.hasFailure;$.fetchedAt=Date.now();$.page=1;$.apiVersion=version;
+ }catch(err){
+  if(req!==$.activeReq||signal.aborted)return;
+  $.error=`招募接口无法访问：${err?.message||'连接失败'}。可能是源站维护、网络阻断或浏览器跨域限制。请勿将其视为“没有招募”。`;
  }finally{if(req===$.activeReq){$.loading=false;$.progress='';render()}}
 }
 function bind(){

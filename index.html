@@ -5,8 +5,8 @@
 <meta name="color-scheme" content="light dark"><meta name="theme-color" content="#f9f9f8">
 <meta name="description" content="FF14 建模招募检索">
 <title>FF14 建模招募检索</title>
-<link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="styles.css?v=9">
-<script defer src="app.js?v=8"></script>
+<link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="styles.css?v=10">
+<script defer src="app.js?v=9"></script>
 </head>
 <body>
 <main class="shell">
@@ -33,7 +33,7 @@
   </section>
   <footer><span>招募信息来自第三方玩家上传，可能延迟或遗漏；粉色数字为匹配到的原文，不代表已确认价格。</span><span><button class="footer-action" id="settingsBtn">数据源设置</button></span></footer>
 </main>
-<dialog id="settingsDialog"><form method="dialog" class="settings"><div class="modalhead"><h3>数据源设置</h3><button class="close" value="cancel" aria-label="关闭">×</button></div><p>默认使用公开的招募数据 API。如果访问被网络或跨域限制阻止，可以填入你自行部署的代理地址。这个设置只保存在当前浏览器。</p><label class="field"><span>接口根地址</span><input id="apiBaseInput" spellcheck="false" autocomplete="off" placeholder="https://example.com"></label><div class="modal-actions"><button id="restoreApiBtn" type="button">恢复默认</button><button value="save" id="saveApiBtn" class="primary">保存</button></div><p class="tiny">不需要登录 FF14 账号，也不要在任何招募查询网页输入游戏密码。</p></form></dialog>
+<dialog id="settingsDialog"><form method="dialog" class="settings"><div class="modalhead"><h3>数据源设置</h3><button class="close" value="cancel" aria-label="关闭">×</button></div><p>优先使用新版 v2 接口，连接失败时自动尝试兼容版 v1。如果源站整体不可用，需要等待恢复或配置自行部署的代理。这个设置只保存在当前浏览器。</p><label class="field"><span>接口根地址</span><input id="apiBaseInput" spellcheck="false" autocomplete="off" placeholder="https://example.com"></label><div class="modal-actions"><button id="restoreApiBtn" type="button">恢复默认</button><button value="save" id="saveApiBtn" class="primary">保存</button></div><p class="tiny">不需要登录 FF14 账号，也不要在任何招募查询网页输入游戏密码。</p></form></dialog>
 <div id="startup" class="startup">如果页面按钮无法使用，请通过浏览器打开已部署的 GitHub Pages 网站。</div>
 </body>
 </html>
